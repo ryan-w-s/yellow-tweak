@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yellow Tone Adjuster</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .container {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .upload-area {
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 2rem;
+            background: rgba(51, 65, 85, 0.3);
+        }
+
+        .upload-area:hover {
+            border-color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.2);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .controls {
+            display: none;
+            margin-bottom: 2rem;
+        }
+
+        .controls.visible {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slider-container {
+            margin-bottom: 2rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .slider-label span {
+            font-weight: 500;
+        }
+
+        .slider-value {
+            background: rgba(251, 191, 36, 0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #fbbf24;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #475569;
+            outline: none;
+            -webkit-appearance: none;
+            position: relative;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(251, 191, 36, 0.6);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+        }
+
+        .canvas-container {
+            text-align: center;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        #canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1e293b;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(251, 191, 36, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(71, 85, 105, 0.8);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(100, 116, 139, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .reset-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .reset-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 1.5rem;
+            }
+            
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Yellow Tone Adjuster</h1>
+        <p>Fine-tune the yellow tones in your images with precision</p>
+    </div>
+
+    <div class="container">
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">Click to upload an image</div>
+            <div class="upload-subtext">drag and drop, or press Ctrl+V to paste</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="paste-controls">
+            <button class="btn btn-secondary" id="pasteBtn" style="margin-bottom: 1rem;">
+                📋 Paste Image from Clipboard
+            </button>
+        </div>
+
+        <div class="controls" id="controls">
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Yellow Adjustment</span>
+                    <span class="slider-value" id="sliderValue">0</span>
+                </div>
+                <input type="range" id="yellowSlider" class="slider" min="-100" max="100" value="0">
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+
+            <div class="buttons">
+                <button class="btn btn-secondary reset-btn" id="resetBtn">
+                    🔄 Reset
+                </button>
+                <button class="btn btn-secondary" id="pasteBtn">
+                    📋 Paste Image
+                </button>
+                <button class="btn btn-secondary" id="copyBtn">
+                    📄 Copy Result
+                </button>
+                <button class="btn btn-primary" id="downloadBtn">
+                    💾 Download Image
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.querySelector('.upload-area');
+        const controls = document.getElementById('controls');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const yellowSlider = document.getElementById('yellowSlider');
+        const sliderValue = document.getElementById('sliderValue');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const pasteBtn = document.getElementById('pasteBtn');
+        const copyBtn = document.getElementById('copyBtn');
+
+        let originalImageData = null;
+        let currentImage = null;
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            console.log('Key pressed:', e.key, 'Ctrl:', e.ctrlKey);
+            if (e.ctrlKey && e.key === 'v') {
+                console.log('Ctrl+V detected, calling paste function');
+                e.preventDefault();
+                pasteFromClipboard();
+            }
+        });
+
+        // Add debugging for page focus
+        document.addEventListener('focus', () => console.log('Page focused'));
+        document.addEventListener('blur', () => console.log('Page blurred'));
+
+        // Clipboard functions with fallback
+        async function pasteFromClipboard() {
+            console.log('pasteFromClipboard called');
+            try {
+                console.log('Checking clipboard API availability...');
+                
+                // Check if clipboard API is available
+                if (!navigator.clipboard) {
+                    console.error('navigator.clipboard not available');
+                    alert('Clipboard API not supported in this browser.');
+                    return;
+                }
+
+                if (!navigator.clipboard.read) {
+                    console.error('navigator.clipboard.read not available');
+                    alert('Clipboard read not supported in this browser.');
+                    return;
+                }
+
+                console.log('Clipboard API available, checking permissions...');
+
+                // Try to read clipboard directly first
+                console.log('Attempting to read clipboard...');
+                const clipboardItems = await navigator.clipboard.read();
+                console.log('Clipboard items:', clipboardItems);
+
+                if (clipboardItems.length === 0) {
+                    console.log('No items in clipboard');
+                    alert('No items found in clipboard. Try copying an image first.');
+                    return;
+                }
+
+                for (const clipboardItem of clipboardItems) {
+                    console.log('Clipboard item types:', clipboardItem.types);
+                    for (const type of clipboardItem.types) {
+                        console.log('Checking type:', type);
+                        if (type.startsWith('image/')) {
+                            console.log('Found image type:', type);
+                            const blob = await clipboardItem.getType(type);
+                            console.log('Got blob:', blob.size, 'bytes');
+                            
+                            const img = new Image();
+                            img.onload = () => {
+                                console.log('Image loaded successfully:', img.width, 'x', img.height);
+                                setupCanvas(img);
+                                controls.classList.add('visible');
+                                URL.revokeObjectURL(img.src);
+                            };
+                            img.onerror = (e) => {
+                                console.error('Image load error:', e);
+                                alert('Failed to load image from clipboard');
+                            };
+                            img.src = URL.createObjectURL(blob);
+                            currentImage = img;
+                            return;
+                        }
+                    }
+                }
+                console.log('No image types found in clipboard');
+                alert('No image found in clipboard. Make sure you copied an image.');
+            } catch (error) {
+                console.error('Paste failed with error:', error.name, error.message);
+                if (error.name === 'NotAllowedError') {
+                    alert('Clipboard access denied. Please allow clipboard permissions in your browser.');
+                } else if (error.name === 'SecurityError') {
+                    alert('Clipboard access blocked for security reasons. Try uploading the file instead.');
+                } else {
+                    alert('Could not paste from clipboard: ' + error.message);
+                }
+            }
+        }
+
+        async function copyToClipboard() {
+            try {
+                // Check if clipboard API is available
+                if (!navigator.clipboard || !navigator.clipboard.write) {
+                    alert('Clipboard API not supported. Use right-click → Save Image instead.');
+                    return;
+                }
+
+                canvas.toBlob(async (blob) => {
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({ 'image/png': blob })
+                        ]);
+                        // Visual feedback
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = '✅ Copied!';
+                        copyBtn.style.background = 'rgba(34, 197, 94, 0.8)';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                            copyBtn.style.background = '';
+                        }, 2000);
+                    } catch (error) {
+                        console.error('Copy failed:', error);
+                        if (error.name === 'NotAllowedError') {
+                            alert('Clipboard access blocked. Please allow clipboard permissions or use right-click → Save Image.');
+                        } else {
+                            alert('Could not copy to clipboard. Try right-click → Save Image instead.');
+                        }
+                    }
+                }, 'image/png', 1.0);
+            } catch (error) {
+                console.error('Copy failed:', error);
+                alert('Could not copy to clipboard. Try right-click → Save Image instead.');
+            }
+        }
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    setupCanvas(img);
+                    controls.classList.add('visible');
+                };
+                img.src = e.target.result;
+                currentImage = img;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setupCanvas(img) {
+            const maxWidth = 700;
+            const maxHeight = 500;
+            let { width, height } = img;
+
+            // Maintain aspect ratio while fitting within max dimensions
+            if (width > maxWidth || height > maxHeight) {
+                const ratio = Math.min(maxWidth / width, maxHeight / height);
+                width *= ratio;
+                height *= ratio;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            originalImageData = ctx.getImageData(0, 0, width, height);
+            
+            // Reset slider when new image is loaded
+            yellowSlider.value = 0;
+            sliderValue.textContent = '0';
+        }
+
+        function adjustYellow(amount) {
+            if (!originalImageData) return;
+
+            const imageData = ctx.createImageData(originalImageData);
+            const data = imageData.data;
+            const originalData = originalImageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = originalData[i];
+                const g = originalData[i + 1];
+                const b = originalData[i + 2];
+
+                // Calculate yellow component (high red and green, low blue)
+                const yellowIntensity = Math.min(r, g) - b * 0.5;
+                const yellowFactor = Math.max(0, yellowIntensity / 255);
+
+                // Apply adjustment
+                const adjustment = amount * yellowFactor;
+                
+                data[i] = Math.max(0, Math.min(255, r + adjustment * 0.8)); // Red
+                data[i + 1] = Math.max(0, Math.min(255, g + adjustment * 0.9)); // Green
+                data[i + 2] = Math.max(0, Math.min(255, b - adjustment * 0.3)); // Blue (reduce for more yellow)
+                data[i + 3] = originalData[i + 3]; // Alpha
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        yellowSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            sliderValue.textContent = value > 0 ? `+${value}` : value;
+            adjustYellow(value * 1.5); // Multiply for more dramatic effect
+        });
+
+        resetBtn.addEventListener('click', () => {
+            yellowSlider.value = 0;
+            sliderValue.textContent = '0';
+            if (originalImageData) {
+                ctx.putImageData(originalImageData, 0, 0);
+            }
+        });
+
+        pasteBtn.addEventListener('click', pasteFromClipboard);
+
+        copyBtn.addEventListener('click', copyToClipboard);
+
+        downloadBtn.addEventListener('click', () => {
+            console.log('Download button clicked');
+            try {
+                console.log('Creating download link...');
+                
+                // Method 1: Try direct download
+                canvas.toBlob((blob) => {
+                    console.log('Canvas converted to blob:', blob?.size, 'bytes');
+                    if (!blob) {
+                        console.error('Failed to create blob from canvas');
+                        alert('Failed to create download file');
+                        return;
+                    }
+                    
+                    const url = URL.createObjectURL(blob);
+                    console.log('Created object URL:', url);
+                    
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'yellow-adjusted-image.png';
+                    
+                    console.log('Appending link to document...');
+                    document.body.appendChild(link);
+                    
+                    console.log('Clicking download link...');
+                    link.click();
+                    
+                    console.log('Removing link from document...');
+                    document.body.removeChild(link);
+                    
+                    console.log('Revoking object URL...');
+                    URL.revokeObjectURL(url);
+                    
+                    console.log('Download process completed');
+                }, 'image/png', 1.0);
+                
+            } catch (error) {
+                console.error('Download failed:', error);
+                alert('Download failed: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
