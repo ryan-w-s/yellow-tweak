@@ -305,9 +305,6 @@
                 <button class="btn btn-secondary reset-btn" id="resetBtn">
                     🔄 Reset
                 </button>
-                <button class="btn btn-secondary" id="pasteBtn">
-                    📋 Paste Image
-                </button>
                 <button class="btn btn-secondary" id="copyBtn">
                     📄 Copy Result
                 </button>
@@ -328,7 +325,7 @@
         const sliderValue = document.getElementById('sliderValue');
         const resetBtn = document.getElementById('resetBtn');
         const downloadBtn = document.getElementById('downloadBtn');
-        const pasteBtn = document.getElementById('pasteBtn');
+        const topPasteBtn = document.getElementById('pasteBtn');
         const copyBtn = document.getElementById('copyBtn');
 
         let originalImageData = null;
@@ -565,7 +562,7 @@
             }
         });
 
-        pasteBtn.addEventListener('click', pasteFromClipboard);
+        topPasteBtn.addEventListener('click', pasteFromClipboard);
 
         copyBtn.addEventListener('click', copyToClipboard);
 
