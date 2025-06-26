@@ -75,6 +75,19 @@
             transform: scale(1.02);
         }
 
+        .paste-controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        #pasteBtn {
+            width: 100%;
+            max-width: 350px;
+            display: block;
+            margin: 0 auto;
+        }
+
         .upload-icon {
             font-size: 3rem;
             margin-bottom: 1rem;
@@ -319,8 +332,8 @@
         const fileInput = document.getElementById('fileInput');
         const uploadArea = document.querySelector('.upload-area');
         const controls = document.getElementById('controls');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const displayCanvas = document.getElementById('canvas');
+        const displayCtx = displayCanvas.getContext('2d');
         const yellowSlider = document.getElementById('yellowSlider');
         const sliderValue = document.getElementById('sliderValue');
         const resetBtn = document.getElementById('resetBtn');
@@ -328,8 +341,8 @@
         const topPasteBtn = document.getElementById('pasteBtn');
         const copyBtn = document.getElementById('copyBtn');
 
-        let originalImageData = null;
-        let currentImage = null;
+        let displayImageOriginalData = null;
+        let originalImage = null;
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -389,7 +402,7 @@
                             const img = new Image();
                             img.onload = () => {
                                 console.log('Image loaded successfully:', img.width, 'x', img.height);
-                                setupCanvas(img);
+                                setupDisplayCanvas(img);
                                 controls.classList.add('visible');
                                 URL.revokeObjectURL(img.src);
                             };
@@ -398,7 +411,6 @@
                                 alert('Failed to load image from clipboard');
                             };
                             img.src = URL.createObjectURL(blob);
-                            currentImage = img;
                             return;
                         }
                     }
@@ -424,8 +436,9 @@
                     alert('Clipboard API not supported. Use right-click → Save Image instead.');
                     return;
                 }
+                if (!originalImage) return;
 
-                canvas.toBlob(async (blob) => {
+                createFullResAdjustedBlob(async (blob) => {
                     try {
                         await navigator.clipboard.write([
                             new ClipboardItem({ 'image/png': blob })
@@ -446,7 +459,7 @@
                             alert('Could not copy to clipboard. Try right-click → Save Image instead.');
                         }
                     }
-                }, 'image/png', 1.0);
+                });
             } catch (error) {
                 console.error('Copy failed:', error);
                 alert('Could not copy to clipboard. Try right-click → Save Image instead.');
@@ -488,16 +501,16 @@
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    setupCanvas(img);
+                    setupDisplayCanvas(img);
                     controls.classList.add('visible');
                 };
                 img.src = e.target.result;
-                currentImage = img;
             };
             reader.readAsDataURL(file);
         }
 
-        function setupCanvas(img) {
+        function setupDisplayCanvas(img) {
+            originalImage = img; // Store full-res image
             const maxWidth = 700;
             const maxHeight = 500;
             let { width, height } = img;
@@ -509,23 +522,21 @@
                 height *= ratio;
             }
 
-            canvas.width = width;
-            canvas.height = height;
+            displayCanvas.width = width;
+            displayCanvas.height = height;
             
-            ctx.drawImage(img, 0, 0, width, height);
-            originalImageData = ctx.getImageData(0, 0, width, height);
+            displayCtx.drawImage(img, 0, 0, width, height);
+            displayImageOriginalData = displayCtx.getImageData(0, 0, width, height);
             
             // Reset slider when new image is loaded
             yellowSlider.value = 0;
             sliderValue.textContent = '0';
         }
 
-        function adjustYellow(amount) {
-            if (!originalImageData) return;
-
-            const imageData = ctx.createImageData(originalImageData);
+        function applyYellowAdjustment(sourceImageData, amount) {
+            const imageData = new ImageData(sourceImageData.width, sourceImageData.height);
             const data = imageData.data;
-            const originalData = originalImageData.data;
+            const originalData = sourceImageData.data;
 
             for (let i = 0; i < data.length; i += 4) {
                 const r = originalData[i];
@@ -544,21 +555,27 @@
                 data[i + 2] = Math.max(0, Math.min(255, b - adjustment * 0.3)); // Blue (reduce for more yellow)
                 data[i + 3] = originalData[i + 3]; // Alpha
             }
-
-            ctx.putImageData(imageData, 0, 0);
+            return imageData;
+        }
+        
+        function updateDisplayCanvas() {
+            if (!displayImageOriginalData) return;
+            const value = parseInt(yellowSlider.value);
+            const adjustedImageData = applyYellowAdjustment(displayImageOriginalData, value * 1.5);
+            displayCtx.putImageData(adjustedImageData, 0, 0);
         }
 
         yellowSlider.addEventListener('input', (e) => {
             const value = parseInt(e.target.value);
             sliderValue.textContent = value > 0 ? `+${value}` : value;
-            adjustYellow(value * 1.5); // Multiply for more dramatic effect
+            updateDisplayCanvas();
         });
 
         resetBtn.addEventListener('click', () => {
             yellowSlider.value = 0;
             sliderValue.textContent = '0';
-            if (originalImageData) {
-                ctx.putImageData(originalImageData, 0, 0);
+            if (displayImageOriginalData) {
+                displayCtx.putImageData(displayImageOriginalData, 0, 0);
             }
         });
 
@@ -566,13 +583,45 @@
 
         copyBtn.addEventListener('click', copyToClipboard);
 
+        function createFullResAdjustedBlob(callback) {
+            if (!originalImage) {
+                console.error("No original image to process.");
+                return;
+            }
+
+            // Create an off-screen canvas
+            const offscreenCanvas = document.createElement('canvas');
+            const offscreenCtx = offscreenCanvas.getContext('2d');
+
+            // Set to full resolution
+            offscreenCanvas.width = originalImage.width;
+            offscreenCanvas.height = originalImage.height;
+
+            // Draw original image to get its data
+            offscreenCtx.drawImage(originalImage, 0, 0);
+            const sourceImageData = offscreenCtx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+
+            // Get current adjustment value
+            const value = parseInt(yellowSlider.value);
+            
+            // Apply adjustment
+            const adjustedImageData = applyYellowAdjustment(sourceImageData, value * 1.5);
+
+            // Put adjusted data back
+            offscreenCtx.putImageData(adjustedImageData, 0, 0);
+
+            // Create blob and execute callback
+            offscreenCanvas.toBlob(callback, 'image/png', 1.0);
+        }
+
         downloadBtn.addEventListener('click', () => {
             console.log('Download button clicked');
+            if (!originalImage) return;
+
             try {
-                console.log('Creating download link...');
+                console.log('Creating full-resolution download link...');
                 
-                // Method 1: Try direct download
-                canvas.toBlob((blob) => {
+                createFullResAdjustedBlob((blob) => {
                     console.log('Canvas converted to blob:', blob?.size, 'bytes');
                     if (!blob) {
                         console.error('Failed to create blob from canvas');
@@ -600,7 +649,7 @@
                     URL.revokeObjectURL(url);
                     
                     console.log('Download process completed');
-                }, 'image/png', 1.0);
+                });
                 
             } catch (error) {
                 console.error('Download failed:', error);
